@@ -15,7 +15,8 @@ LINUX_EXE := ${IMAGE}.exe
 IMAGE_LIST := ${IMAGE}-images.out
 
 test:
-	@-echo ${DOCKER} ${IMAGE}:${VERSION} ${LINUX_EXE}
+	@-echo Use \"make docker\" to $(DOCKER) image ${IMAGE}:${VERSION} from ${LINUX_EXE}
+# "make push" will push it to DockerHub, using credentials in your env
 
 ##
 # Supply default options to docker build
@@ -27,7 +28,7 @@ endef
 ##
 # build the standalone perftest application
 ##
-.PHONE: standalone
+.PHONY: standalone
 standalone:
 	go build -v
 
