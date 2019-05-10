@@ -33,7 +33,7 @@ standalone:
 	go build -v
 
 .PHONY: build docker full
-build docker: ${IMAGE}
+build docker: ${IMAGE_LIST}
 ${IMAGE_LIST}:	${LINUX_EXE}
 	$(docker-build) -t ${IMAGE} .
 	${DOCKER} images | egrep '^perftest ' > ${IMAGE_LIST}
