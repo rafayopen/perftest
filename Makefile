@@ -6,8 +6,8 @@ CWD := $(shell basename ${PWD})
 # Docker image name, based on current working directory
 # Also the local binary name if you "go build perftest.go"
 IMAGE := ${CWD}
-# Version (for docker push)
-VERSION := v1
+# Version (tag used with docker push)
+VERSION := v2
 
 # Linux build image name (does not conflict with go build)
 LINUX_EXE := ${IMAGE}.exe
@@ -28,15 +28,20 @@ endef
 ##
 # build the standalone perftest application
 ##
-.PHONY: standalone
-standalone:
-	go build -v
+.PHONY: standalone install
+${IMAGE}: *.go */*.go
+	go build -v && go test -v && go vet
 
-.PHONY: build docker full
-build docker: ${IMAGE}
+standalone: ${IMAGE}
+install:	${IMAGE}
+	go install
+
+.PHONY: build docker full 
+build docker: ${IMAGE_LIST}
 ${IMAGE_LIST}:	${LINUX_EXE}
 	$(docker-build) -t ${IMAGE} .
-	${DOCKER} images | egrep '^perftest ' > ${IMAGE_LIST}
+	$(DOCKER) tag ${IMAGE} "${IMAGE}:${VERSION}" # tag local image name with version
+	$(DOCKER) images | egrep '^perftest ' > ${IMAGE_LIST}
 	@-test -s ${IMAGE_LIST} || rm -f ${IMAGE_LIST}
 
 full:	clean docker run
@@ -54,8 +59,8 @@ run:	${IMAGE_LIST}
 	$(DOCKER) run --rm -it -e PERFTEST_URL="https://www.google.com" -e REP_CITY="Sunnyvale" -e REP_COUNTRY="US" -e AWS_REGION="us-west-2" -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" ${IMAGE} -n=5 -d=2
 
 push:	${IMAGE_LIST}
-	docker tag perftest "${DOCKER_USER}/${IMAGE}:${VERSION}"
-	docker push ${DOCKER_USER}/perftest
+	$(DOCKER) tag ${IMAGE} "${DOCKER_USER}/${IMAGE}:${VERSION}"
+	$(DOCKER) push ${DOCKER_USER}/${IMAGE}
 
 .PHONY: clean
 clean:

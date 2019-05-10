@@ -153,6 +153,9 @@ func FetchURL(rawurl string, myLocation string) *PingTimes {
 		tTcpHs = tDnsLk
 		tFirst = tClose
 		tConnd = tFirst
+	} else if tConnd.IsZero() { // in case of read: connection reset by peer
+		tFirst = tClose
+		tConnd = tFirst
 	}
 
 	return &PingTimes{
