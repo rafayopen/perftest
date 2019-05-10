@@ -1,0 +1,8 @@
+perftest
+perftest.exe
+*~
+*.bak
+*/bak
+*.out
+*/out
+*.pem
