@@ -50,7 +50,7 @@ var (
 
 	delayFlag     = flag.Int("d", 10, "delay in seconds between test requests")
 	maxFails      = flag.Int("f", 10, "maximum number of failures before process quits")
-	numTests      = flag.Int("n", 0, "number of tests to each endpoint (default 0 means forever)")
+	numTests      = flag.Int("n", 0, "number of tests to each endpoint (default 0 runs until interrupted)")
 	jsonFlag      = flag.Bool("j", false, "write detailed metrics in JSON (default is text TSV format)")
 	alertMsec     = flag.Int64("A", 0, "alert threshold in milliseconds")
 	alertInterval = flag.Int64("M", 300, "minimum time interval between generated alerts (seconds)")
