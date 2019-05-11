@@ -17,15 +17,15 @@ response time data as well as detailed response time statistics.
 
 ### Prerequisites
 
-You must have the ([golang](https://golang.org/doc/install)) language installed to build perftest.
+Perftest is written in [golang](https://golang.org/doc/install).
 Install and configure it using instructions at the link above.
 
-If you don't want to install `go` and build yourself you can also just run a
-prebuilt version on DockerHub (see "Run from Docker" below).
+If you don't want to install `go`, you can run a prebuilt version of
+`perftest` from DockerHub (see "Run from Docker" below).
 
 If you want to build and run perftest in a container you will need the
 [Docker environment](https://docs.docker.com/get-started/).  If you have
-golang you can just build and run a standalone version.
+golang you can still build and run a standalone version.
 
 ## How to Build and Run
 
