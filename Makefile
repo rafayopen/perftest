@@ -65,4 +65,4 @@ push:	${IMAGE_LIST}
 .PHONY: clean
 clean:
 	-rm -rf ${IMAGE} ${LINUX_EXE} ${IMAGE_LIST} ca-certificates.pem 
-	-$(DOCKER) rmi ${IMAGE}
+	-$(DOCKER) rmi ${IMAGE}:${VERSION}
