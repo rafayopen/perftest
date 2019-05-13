@@ -349,17 +349,16 @@ func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 			}
 
 			if *cwFlag {
-				// comment out this block to build without AWS cloudwatch util/cw_put.go
 				if verbose > 1 {
 					log.Println("publishing", util.Msec(pt.RespTime()), "msec to cloudwatch")
 				}
 				respCode := "0"
 				if pt.RespCode >= 0 {
 					// 000 in cloudwatch indicates it was a zero return code from lower layer
-					// "0" in cloudwatch indicates a error making the request
+					// while single digit 0 indicates an error making the request
 					respCode = fmt.Sprintf("%03d", pt.RespCode)
 				}
-				/* cw_put */
+
 				util.PublishRespTime(myLocation, urlStr, respCode, util.Msec(pt.RespTime()))
 			}
 
