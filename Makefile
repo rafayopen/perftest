@@ -7,7 +7,7 @@ CWD := $(shell basename ${PWD})
 # Also the local binary name if you "go build perftest.go"
 IMAGE := ${CWD}
 # Version (tag used with docker push)
-VERSION := v2
+VERSION := v3
 
 # Linux build image name (does not conflict with go build)
 LINUX_EXE := ${IMAGE}.exe
@@ -38,7 +38,7 @@ install:	${IMAGE}
 
 .PHONY: build docker full 
 build docker: ${IMAGE_LIST}
-${IMAGE_LIST}:	${LINUX_EXE}
+${IMAGE_LIST}:	${LINUX_EXE} Dockerfile Makefile
 	$(docker-build) -t ${IMAGE} .
 	$(DOCKER) tag ${IMAGE} "${IMAGE}:${VERSION}" # tag local image name with version
 	$(DOCKER) images | egrep '^perftest ' > ${IMAGE_LIST}
@@ -46,13 +46,8 @@ ${IMAGE_LIST}:	${LINUX_EXE}
 
 full:	clean docker run
 
-${LINUX_EXE}: ca-certificates.pem Dockerfile perftest.go util/*.go
+${LINUX_EXE}: perftest.go */*.go
 	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o $@ .
-
-##
-# Where to find certificates ... you may have to change this for your system
-ca-certificates.pem: /usr/local/etc/openssl/cert.pem
-	cp $? $@
 
 .PHONY: run push
 run:	${IMAGE_LIST}
@@ -64,5 +59,5 @@ push:	${IMAGE_LIST}
 
 .PHONY: clean
 clean:
-	-rm -rf ${IMAGE} ${LINUX_EXE} ${IMAGE_LIST} ca-certificates.pem 
+	-rm -rf ${IMAGE} ${LINUX_EXE} ${IMAGE_LIST}
 	-$(DOCKER) rmi ${IMAGE}:${VERSION}
