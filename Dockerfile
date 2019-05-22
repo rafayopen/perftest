@@ -8,5 +8,6 @@ RUN apk update && apk add ca-certificates && /bin/rm -rf /var/cache/apk/*
 ADD perftest.exe /usr/local/bin/perftest
 
 # Include -c option to publish to CloudWatch.  You must also set the following
-# environment variables: AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-ENTRYPOINT [ "/usr/local/bin/perftest", "-c" ]
+# environment variables: AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.
+# Include -v option to turn on verbose logging.
+ENTRYPOINT [ "/usr/local/bin/perftest", "-c", "-v" ]
