@@ -3,7 +3,6 @@
 // application response time.  It can publish data to Cloudwatch, publish the details to
 // a webhook, such as a StreamSets endpoint, or trigger alerts via Twilio.
 // From https://github.com/davecheney/httpstat, from https://github.com/reorx/httpstat.
-
 package main
 
 import (
@@ -56,6 +55,7 @@ var (
 	alertInterval = flag.Int64("M", 300, "minimum time interval between generated alerts (seconds)")
 	cwFlag        = flag.Bool("c", false, "Publish metrics to CloudWatch (requires AWS credentials in env)")
 	webhook       = flag.String("W", "", "Webhook target URL to receive JSON log details via POST")
+	portFlag      = flag.Int("p", 0, "run web server on this port (if non-zero) to report stats")
 	qf            = flag.Bool("q", false, "be quiet, not verbose")
 	vf1           = flag.Bool("v", false, "be verbose")
 	vf2           = flag.Bool("V", false, "be more verbose")
@@ -217,8 +217,33 @@ func main() {
 		log.Println("testing ", urls, "from", util.LocationOrIp(&myLocation))
 	}
 
-	if !*jsonFlag {
-		util.TextHeader(os.Stdout)
+	serverPort := 0
+	if portEnv, found := os.LookupEnv("PERFTEST_LISTEN_PORT"); found {
+		val, err := strconv.Atoi(portEnv)
+		if err != nil {
+			log.Println("ERROR: cannot parse PERFTEST_LISTEN_PORT as an int:", err)
+			return
+		}
+		serverPort = val
+	}
+
+	if *portFlag > 0 {
+		if serverPort > 0 {
+			log.Println("NOTE: command line port", *portFlag, "overrides listen port from env", serverPort)
+		}
+		serverPort = *portFlag
+	}
+
+	if serverPort > 0 {
+		if serverPort > 65535 {
+			log.Println("bad port > 65535", serverPort)
+			return
+		}
+
+		if verbose > 0 {
+			log.Printf("Starting responder on http://localhost:%d\n", serverPort)
+		}
+		go util.StartServer(serverPort)
 	}
 
 	////
@@ -234,11 +259,14 @@ func main() {
 	signal.Notify(sigchan, syscall.SIGTERM)
 	go func() {
 		for sig := range sigchan {
-			fmt.Println("\nreceived", sig, "signal, terminating")
+			if verbose > 1 {
+				fmt.Println("\nreceived", sig, "signal, terminating")
+			}
 			if doneChan != nil {
 				close(doneChan)
 				doneChan = nil
 			}
+			close(sigchan)
 		}
 	}()
 
@@ -251,6 +279,12 @@ func main() {
 	if verbose > 1 {
 		log.Println("waiting for children to exit")
 	}
+
+	if !*jsonFlag {
+		// put header after any debug messages, but there's a race condition here :-)
+		util.TextHeader(os.Stdout)
+	}
+
 	wg.Wait()
 
 	if verbose > 2 {
@@ -307,11 +341,10 @@ func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 				defer func() { // summary printer, runs upon return
 					elapsed := hhmmss(time.Now().Unix() - ptSummary.Start.Unix())
 
-					fmt.Printf("\nRecorded %d samples in %s, average values:\n",
-						count, elapsed)
 					fc := float64(count) // count will be 1 by time this runs
-					util.TextHeader(os.Stdout)
-					fmt.Printf("%d %-6s\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t\t%d\t%s\t%s\n\n",
+					fmt.Printf("\nRecorded %d samples in %s, average values:\n"+"%s"+
+						"%d %-6s\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t\t%d\t%s\t%s\n\n",
+						count, elapsed, util.PingTimesHeader(),
 						count, elapsed,
 						util.Msec(ptSummary.DnsLk)/fc,
 						util.Msec(ptSummary.TcpHs)/fc,
@@ -324,6 +357,7 @@ func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 						"", // TODO: report summary of each from location?
 						*ptSummary.DestUrl)
 				}()
+				// TODO: report all summaries just before program exit (not thread exit)
 			} else {
 				ptSummary.DnsLk += pt.DnsLk
 				ptSummary.TcpHs += pt.TcpHs

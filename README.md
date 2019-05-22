@@ -326,6 +326,23 @@ if the application encountered an issue.  You can also get a shell to try
 out the application locally.  (The shell does not work in firefox, so use
 chrome or safari for this feature.)
 
+## Looking at Memory Utilization
+
+I was curious how much memory I was using in my workload, and if I had a
+memory leak.  Debugging this in a docker is not so easy (especially a
+minimal one), and doing so in multiple locations is even harder.   So I
+added a simple web server function to my application to return memory usage
+information using the golang `runtime.MemStats` feature.
+
+Docker version v5 includes this new flag.  Here's an example, using a
+not-so-random port, testing against google every 30 seconds:
+
+``` shell
+docker run perftest:v5 -d 30 -s 52378 https://www.google.com/
+```
+
+View memory stats by pointing your browser to `localhost:52378/memstats`.
+
 ## Viewing Workload Results
 
 There are a couple ways to see what is happening.
@@ -345,3 +362,4 @@ You'll note that the Rafay workload picks up a location label automatically
 from the environment: we put REP_LOCATION, and a few other items, into the
 shell environment of every container.  You can see them by running a
 go-httpbin testapp we also provide (at the /env/ endpoint).
+

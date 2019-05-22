@@ -1,7 +1,5 @@
 package util
 
-//  HTTP reseponse time data structure and methods
-
 import (
 	"encoding/json"
 	"fmt"
@@ -10,7 +8,8 @@ import (
 	"time"
 )
 
-// Components of an HTTP ping request for reporting performance (to cloudwatch, or whatever)
+// PingTimes holds the components of an HTTP ping request for reporting
+// performance (to cloudwatch, or whatever).  See the receiver methods below.
 type PingTimes struct {
 	Start    time.Time     // time we started the ping
 	DnsLk    time.Duration // DNS Lookup
@@ -26,10 +25,10 @@ type PingTimes struct {
 	Size     int64         // total response bytes
 }
 
-// Response time is the total duration from the TCP open until the TCP close.
-// DNS lookup time is not included in this measure.
-// Will be zero iff the request failed.
-// This method sets the value in the object to the sum.  Call this before dumping as JSON!
+// RespTime returns the total duration from the TCP open until the TCP close.
+// DNS lookup time is NOT included in this measure.
+// The time.Duration returned will be zero iff the request failed.
+// This method sets or changes the pt.Total value.
 func (pt *PingTimes) RespTime() time.Duration {
 	if pt.Total == 0 {
 		pt.Total = pt.DnsLk + pt.TcpHs + pt.TlsHs + pt.Reply + pt.Close
@@ -37,7 +36,7 @@ func (pt *PingTimes) RespTime() time.Duration {
 	return pt.Total
 }
 
-// Msec returns the duration as a floating point number of seconds.
+// Msec converts a time.Duration to a floating point number of seconds.
 func Msec(d time.Duration) float64 {
 	sec := d / time.Second
 	nsec := d % time.Second
@@ -46,7 +45,9 @@ func Msec(d time.Duration) float64 {
 
 var myIp *string
 
-// Return my outbound IP address as a string
+// GetMyIp returns your primary local IP address (as from `ifconfig`).
+// Note that a docker container has a different primary local IP address
+// (172.something) than your base host.
 func GetMyIp() string {
 	if myIp == nil {
 		conn, err := net.Dial("udp", "8.8.8.8:53")
@@ -60,6 +61,8 @@ func GetMyIp() string {
 	return *myIp
 }
 
+// LocationOrIp returns the loc string, if it has a value, or else the
+// IP address as determined by GetMyIp().
 func LocationOrIp(loc *string) string {
 	if loc != nil && len(*loc) > 0 {
 		return *loc
@@ -68,6 +71,8 @@ func LocationOrIp(loc *string) string {
 	}
 }
 
+// String returns a canonical string representation of the PingTimes
+// argument using golang native representatino of time.Duration.
 func (pt *PingTimes) String() string {
 	return fmt.Sprintln(
 		"DnsLk:", pt.DnsLk, // DNS lookup
@@ -81,6 +86,7 @@ func (pt *PingTimes) String() string {
 	)
 }
 
+// I don't know why golang string doesn't already have this feature.
 func SafeStrPtr(sp *string, ifnil string) string {
 	if sp == nil || *sp == "" {
 		return ifnil
@@ -88,8 +94,10 @@ func SafeStrPtr(sp *string, ifnil string) string {
 	return *sp
 }
 
-// Return tab separated values: Unix timestamp first then msec time values for
-// each of the time component fields as msec.uuu (three digits of microseconds).
+// MsecTsv returns a tab separated values string with the (Unix epoch)
+// timestamp of the start of the test followed by the msec time deltas
+// for each of the time component fields as msec.uuu (three digits of
+// microseconds), and then the other values of PingTimes.
 func (pt *PingTimes) MsecTsv() string {
 	return fmt.Sprintf("%d\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t%03d\t%d\t%s\t%s\t%s",
 		pt.Start.Unix(),
@@ -106,8 +114,17 @@ func (pt *PingTimes) MsecTsv() string {
 		SafeStrPtr(pt.DestUrl, "noUrl"))
 }
 
+// TextHeader dumps a column header corresponding to the values onto the
+// file handle provided.  (Included for backwards compatibility.)
 func TextHeader(file *os.File) {
-	fmt.Fprintf(file, "# %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+	fmt.Fprintf(file, "%s", PingTimesHeader())
+}
+
+//  PingTimesHeader returns a column header string with field names
+//  corresponding to the values onto the PingTimes structure, in the
+//  same order as the string returned by MsecTsv().
+func PingTimesHeader() string {
+	return fmt.Sprintf("# %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 		"timestamp",
 		"DNS",
 		"TCP",
@@ -122,12 +139,13 @@ func TextHeader(file *os.File) {
 		"proto://uri")
 }
 
-// Write ping times as tab-separated milliseconds into the given open file.
+// DumpText writes ping times as tab-separated milliseconds into the file.
 func (pt *PingTimes) DumpText(file *os.File) {
 	fmt.Fprintln(file, pt.MsecTsv())
 }
 
-// Write ping times as raw JSON (nanosecond values) into the given open file.
+// DumpJson writes ping times as JSON using native (nanosecond)
+// timestamp values into the given open file.
 func (pt *PingTimes) DumpJson(file *os.File) error {
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", " ")
