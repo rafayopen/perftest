@@ -28,8 +28,8 @@ endef
 # build the standalone perftest application
 ##
 .PHONY: standalone install
-${IMAGE}: *.go */*.go
-	go build -v && go test -v && go vet
+${IMAGE}: cmd/*/*.go pkg/*/*.go
+	cd cmd/perftest && go build -v && go test -v && go vet && ln -f perftest ../..
 
 standalone: ${IMAGE}
 install:	${IMAGE}
