@@ -1,6 +1,8 @@
-package util
+package cw
 
 import (
+	pt "github.com/rafayopen/perftest/pkg/pt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
@@ -50,7 +52,7 @@ func PublishRespTime(location, url, respCode string, respTime float64) {
 					},
 					&cloudwatch.Dimension{
 						Name:  aws.String("FromLocation"),
-						Value: aws.String(LocationOrIp(&location)),
+						Value: aws.String(pt.LocationOrIp(&location)),
 					},
 				},
 			},

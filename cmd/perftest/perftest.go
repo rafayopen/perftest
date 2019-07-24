@@ -6,7 +6,10 @@
 package main
 
 import (
-	"github.com/rafayopen/perftest/util"
+	cw "github.com/rafayopen/perftest/pkg/cw"
+	pf "github.com/rafayopen/perftest/pkg/flag"
+	pt "github.com/rafayopen/perftest/pkg/pt"
+	srv "github.com/rafayopen/perftest/pkg/srv"
 
 	"bytes"
 	"encoding/json"
@@ -65,10 +68,10 @@ var (
 
 	verbose = 0
 
-	alertThresh time.Duration        // alert threshold value (from environment)
-	twilioSms   util.StringArrayFlag // array of Twilio SMS numbers to alert
-	twilioKey   string               // holds Twilio accountSid:authToken
-	smsSender   string               // SMS sender number registered -- must be with Twilio
+	alertThresh time.Duration      // alert threshold value (from environment)
+	twilioSms   pf.StringArrayFlag // array of Twilio SMS numbers to alert
+	twilioKey   string             // holds Twilio accountSid:authToken
+	smsSender   string             // SMS sender number registered -- must be with Twilio
 )
 
 func printUsage() {
@@ -97,7 +100,7 @@ func initializeHTTP() {
 }
 
 // publishJSON sends the PingTimes struct in JSON to the webhook endpoint url.
-func publishJSON(url string, pt *util.PingTimes) {
+func publishJSON(url string, pt *pt.PingTimes) {
 	jsonData, err := json.Marshal(pt)
 	if err != nil {
 		log.Println("failed to marshal PingTimes", err)
@@ -129,7 +132,7 @@ func main() {
 		verbose = 0
 	}
 	if *vf1 {
-		verbose += 1
+		verbose++
 	}
 	if *vf2 {
 		verbose += 2
@@ -197,7 +200,7 @@ func main() {
 		// Do Not use os.Exit after this point (see return at end of main)
 	}
 
-	myLocation = util.LocationFromEnv()
+	myLocation = pt.LocationFromEnv()
 
 	if *cwFlag {
 		cwRegion := os.Getenv("AWS_REGION")
@@ -214,7 +217,7 @@ func main() {
 	}
 
 	if verbose > 0 {
-		log.Println("testing ", urls, "from", util.LocationOrIp(&myLocation))
+		log.Println("testing ", urls, "from", pt.LocationOrIp(&myLocation))
 	}
 
 	serverPort := 0
@@ -243,14 +246,16 @@ func main() {
 		if verbose > 0 {
 			log.Printf("Starting responder on http://localhost:%d\n", serverPort)
 		}
-		go util.StartServer(serverPort)
+		go srv.StartServer(serverPort)
+		// http.HandleFunc("/ping", srv.pongReply)
+		http.HandleFunc("/memstats", srv.MemStatsReply)
 	}
 
 	////
-	// Run testHttp for each endpoint in a goroutine synchronized with a WaitGroup
+	// Run testHTTP for each endpoint in a goroutine synchronized with a WaitGroup
 	////
 
-	var doneChan = make(chan int) // signals when testHttp should stop testing
+	var doneChan = make(chan int) // signals when testHTTP should stop testing
 	wg := new(sync.WaitGroup)     // coordinates exit across goroutines
 
 	// Set up signal handler to close down gracefully
@@ -272,7 +277,7 @@ func main() {
 
 	for _, url := range urls {
 		wg.Add(1)                                 // wg.Add must finish before Wait()
-		go testHttp(url, *numTests, doneChan, wg) // will call wg.Done before it returns
+		go testHTTP(url, *numTests, doneChan, wg) // will call wg.Done before it returns
 	}
 
 	// wait for group including ponger if Add(1) preceeds it ...
@@ -282,7 +287,7 @@ func main() {
 
 	if !*jsonFlag {
 		// put header after any debug messages, but there's a race condition here :-)
-		util.TextHeader(os.Stdout)
+		pt.TextHeader(os.Stdout)
 	}
 
 	wg.Wait()
@@ -293,19 +298,19 @@ func main() {
 	return // do not os.Exit, it will not run deferred (cleanup) functions ... (if any)
 }
 
-// testHttp sends HTTP request(s) to the given URL and captures detailed timing information.
+// testHTTP sends HTTP request(s) to the given URL and captures detailed timing information.
 // It will repeat the request after a delay interval (in time.Seconds) elapses.
 // It will make numTries attempts.
 // It will exit if the done channel closes.
 // Calls WaitGroup.Done upon return so caller knows when all work is finished.
-func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
+func testHTTP(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 	// clear this task in the waitgroup when returning
 	defer wg.Done()
 	if numTries == 0 {
 		numTries = math.MaxInt32
 	}
 
-	url := util.ParseURL(uri)
+	url := pt.ParseURL(uri)
 	urlStr := url.Scheme + "://" + url.Host + url.Path
 
 	if verbose > 2 {
@@ -318,13 +323,13 @@ func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 		enc.SetIndent("", "  ")
 	}
 
-	var count int64              // successful
-	failcount := 0               // failed
-	var ptSummary util.PingTimes // aggregates ping time results
+	var count int64            // successful
+	failcount := 0             // failed
+	var ptSummary pt.PingTimes // aggregates ping time results
 
 	for {
-		pt := util.FetchURL(urlStr, myLocation)
-		if nil == pt {
+		ptResult := pt.FetchURL(urlStr, myLocation)
+		if nil == ptResult {
 			failcount++
 			if failcount >= *maxFails {
 				log.Println("fetch failure", failcount, "of", *maxFails, "on", url)
@@ -337,21 +342,21 @@ func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 			// fall out below, check done channel and try again after delay
 		} else {
 			if count == 0 {
-				ptSummary = *pt
+				ptSummary = *ptResult
 				defer func() { // summary printer, runs upon return
 					elapsed := hhmmss(time.Now().Unix() - ptSummary.Start.Unix())
 
 					fc := float64(count) // count will be 1 by time this runs
 					fmt.Printf("\nRecorded %d samples in %s, average values:\n"+"%s"+
 						"%d %-6s\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t\t%d\t%s\t%s\n\n",
-						count, elapsed, util.PingTimesHeader(),
+						count, elapsed, pt.PingTimesHeader(),
 						count, elapsed,
-						util.Msec(ptSummary.DnsLk)/fc,
-						util.Msec(ptSummary.TcpHs)/fc,
-						util.Msec(ptSummary.TlsHs)/fc,
-						util.Msec(ptSummary.Reply)/fc,
-						util.Msec(ptSummary.Close)/fc,
-						util.Msec(ptSummary.RespTime())/fc,
+						pt.Msec(ptSummary.DnsLk)/fc,
+						pt.Msec(ptSummary.TcpHs)/fc,
+						pt.Msec(ptSummary.TlsHs)/fc,
+						pt.Msec(ptSummary.Reply)/fc,
+						pt.Msec(ptSummary.Close)/fc,
+						pt.Msec(ptSummary.RespTime())/fc,
 						// TODO: report summary stats per response code
 						ptSummary.Size/count,
 						"", // TODO: report summary of each from location?
@@ -359,13 +364,13 @@ func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 				}()
 				// TODO: report all summaries just before program exit (not thread exit)
 			} else {
-				ptSummary.DnsLk += pt.DnsLk
-				ptSummary.TcpHs += pt.TcpHs
-				ptSummary.TlsHs += pt.TlsHs
-				ptSummary.Reply += pt.Reply
-				ptSummary.Close += pt.Close
-				ptSummary.Total += pt.Total
-				ptSummary.Size += pt.Size
+				ptSummary.DnsLk += ptResult.DnsLk
+				ptSummary.TcpHs += ptResult.TcpHs
+				ptSummary.TlsHs += ptResult.TlsHs
+				ptSummary.Reply += ptResult.Reply
+				ptSummary.Close += ptResult.Close
+				ptSummary.Total += ptResult.Total
+				ptSummary.Size += ptResult.Size
 				// TODO: record changes in Remote Server IP from DNS resolution
 				// TODO: record count of different RespCode HTTP response code seen
 				// or keep a summary object in a hash by unique RespCode
@@ -377,36 +382,36 @@ func testHttp(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 			//  Print out result of this test
 			////
 			if *jsonFlag {
-				enc.Encode(pt)
+				enc.Encode(ptResult)
 			} else {
-				fmt.Println(count, pt.MsecTsv())
+				fmt.Println(count, ptResult.MsecTsv())
 			}
 
 			if *cwFlag {
 				if verbose > 1 {
-					log.Println("publishing", util.Msec(pt.RespTime()), "msec to cloudwatch")
+					log.Println("publishing", pt.Msec(ptResult.RespTime()), "msec to cloudwatch")
 				}
 				respCode := "0"
-				if pt.RespCode >= 0 {
+				if ptResult.RespCode >= 0 {
 					// 000 in cloudwatch indicates it was a zero return code from lower layer
 					// while single digit 0 indicates an error making the request
-					respCode = fmt.Sprintf("%03d", pt.RespCode)
+					respCode = fmt.Sprintf("%03d", ptResult.RespCode)
 				}
 
-				util.PublishRespTime(myLocation, urlStr, respCode, util.Msec(pt.RespTime()))
+				cw.PublishRespTime(myLocation, urlStr, respCode, pt.Msec(ptResult.RespTime()))
 			}
 
 			if whClient != nil {
 				if verbose > 1 {
-					log.Println("publishing", pt.Remote, "to webhook")
+					log.Println("publishing", ptResult.Remote, "to webhook")
 				}
-				publishJSON(whURL, pt)
+				publishJSON(whURL, ptResult)
 			}
 
 			// check if respose time exceeds threshold
-			if pt.RespTime() > alertThresh {
+			if ptResult.RespTime() > alertThresh {
 				// generate any requested alerts
-				sendAlert(pt, urlStr)
+				sendAlert(ptResult, urlStr)
 			}
 		}
 
@@ -448,9 +453,9 @@ func hhmmss(secs int64) string {
 // Unix time of last alert ... to compare to
 var lastAlert int64
 
-func sendAlert(pt *util.PingTimes, url string) {
-	timeSinceLast := pt.Start.Unix() - lastAlert
-	msg := fmt.Sprintf("RespTime %s on %s exceeds %s", pt.RespTime(), url, alertThresh)
+func sendAlert(ptResult *pt.PingTimes, url string) {
+	timeSinceLast := ptResult.Start.Unix() - lastAlert
+	msg := fmt.Sprintf("RespTime %s on %s exceeds %s", ptResult.RespTime(), url, alertThresh)
 	if verbose > 0 {
 		log.Println(msg)
 	}
@@ -461,7 +466,7 @@ func sendAlert(pt *util.PingTimes, url string) {
 		}
 		return
 	}
-	lastAlert = pt.Start.Unix()
+	lastAlert = ptResult.Start.Unix()
 
 	if 0 == len(twilioKey) || 0 == len(twilioSms) {
 		log.Println("OOPS: nowhere to send notification for", url)
@@ -481,7 +486,7 @@ func sendTwilio(msg, key, sms string) {
 	accountSid := key[:separator]
 	authToken := key[1+separator:]
 
-	twilioUrl := "https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/Messages.json"
+	twilioURL := "https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/Messages.json"
 
 	if verbose > 1 {
 		log.Println("sending Twilio msg to SMS", sms)
@@ -495,7 +500,7 @@ func sendTwilio(msg, key, sms string) {
 
 	// Create HTTP request client
 	client := &http.Client{}
-	req, _ := http.NewRequest("POST", twilioUrl, &msgDataReader)
+	req, _ := http.NewRequest("POST", twilioURL, &msgDataReader)
 	req.SetBasicAuth(accountSid, authToken)
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")

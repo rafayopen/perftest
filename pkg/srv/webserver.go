@@ -1,4 +1,4 @@
-package util
+package srv
 
 import (
 	"fmt"
@@ -8,10 +8,6 @@ import (
 	"time"
 )
 
-func bToMb(b uint64) uint64 {
-	return b / 1024 / 1024
-}
-
 // StartServer is a goroutine that runs up a web server to listen on the given
 // port, and sets up handlers for two endpoints: "/ping" serves a simple HTTP
 // reply that includes the request URI and current time; "/memstats" serves a
@@ -20,9 +16,6 @@ func bToMb(b uint64) uint64 {
 //
 // StartServer never returns.  Invoke it with go StartServer(yourPort).
 func StartServer(port int) {
-	http.HandleFunc("/ping", pongReply)
-	http.HandleFunc("/memstats", memStatsReply)
-
 	max := 5 // 5 tries = 15 seconds (linear backoff -- 5th triangular number)
 
 	addr := fmt.Sprintf(":%d", port)
@@ -45,17 +38,18 @@ func StartServer(port int) {
 	}
 }
 
-func pongReply(w http.ResponseWriter, r *http.Request) {
-	now := time.Now()
-	fmt.Fprintln(w, "<h1>pong</h1><p>reply to", r.URL.Path, "@", now)
-	log.Println("pongReply", r.RemoteAddr)
-}
-
-func memStatsReply(w http.ResponseWriter, r *http.Request) {
+// MemStatsReply returns a web page containing memory usage statistics
+func MemStatsReply(w http.ResponseWriter, r *http.Request) {
 	// with thanks from https://golangcode.com/print-the-current-memory-usage/
 	var m runtime.MemStats
+
+	bToMb := func(b uint64) uint64 {
+		return b / 1024 / 1024
+	}
+
 	runtime.ReadMemStats(&m)
 	active := m.Mallocs - m.Frees
+
 	alloc := bToMb(m.Alloc)
 	fmt.Fprintln(w, "<h1>MemStats</h1>\n<p>", time.Now())
 	// The number of live objects is Mallocs - Frees.

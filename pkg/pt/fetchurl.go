@@ -1,4 +1,4 @@
-package util
+package pt
 
 //  HTTP fetcher returning PingTimes
 
