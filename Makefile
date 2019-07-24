@@ -61,3 +61,10 @@ push:	${IMAGE_LIST}
 clean:
 	-rm -rf ${IMAGE} ${LINUX_EXE} ${IMAGE_LIST}
 	-$(DOCKER) rmi ${IMAGE}:${VERSION}
+
+CLI = rafay-cli
+NOW = $(shell date +%Y%m%d%H%M)
+rafay-push:	${IMAGE_LIST}
+	$(DOCKER) tag ${IMAGE} ${IMAGE}:${NOW} # tag local image name with timestamp
+	$(CLI) image upload ${IMAGE}:${NOW}
+
