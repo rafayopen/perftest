@@ -4,18 +4,17 @@ export DOCKER
 
 CWD := $(shell basename ${PWD})
 # Docker image name, based on current working directory
-# Also the local binary name if you "go build perftest.go"
 IMAGE := ${CWD}
 # Version (tag used with docker push)
 VERSION := v3
 
 # Linux build image name (does not conflict with go build)
-LINUX_EXE := ${IMAGE}.exe
+LINUX_EXE := cmd/${IMAGE}/${IMAGE}.exe
 # List of docker images
 IMAGE_LIST := ${IMAGE}-images.out
 
 test:
-	@-echo Use \"make docker\" to $(DOCKER) image ${IMAGE}:${VERSION} from ${LINUX_EXE}
+	@-echo Use \"make docker\" to build ${IMAGE}:${VERSION} from ${LINUX_EXE}
 # "make push" will push it to DockerHub, using credentials in your env
 
 ##
@@ -46,8 +45,8 @@ ${IMAGE_LIST}:	${LINUX_EXE} Dockerfile Makefile
 
 full:	clean docker run
 
-${LINUX_EXE}: perftest.go */*.go
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o $@ .
+${LINUX_EXE}: cmd/perftest/perftest.go pkg/*/*.go
+	cd cmd/perftest && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o $@ .
 
 .PHONY: run push
 run:	${IMAGE_LIST}
