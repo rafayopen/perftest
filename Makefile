@@ -6,15 +6,16 @@ CWD := $(shell basename ${PWD})
 # Docker image name, based on current working directory
 IMAGE := ${CWD}
 # Version (tag used with docker push)
-VERSION := v3
+VERSION := v5
 
 # Linux build image name (does not conflict with go build)
-LINUX_EXE := cmd/${IMAGE}/${IMAGE}.exe
+LINUX_EXE := ${IMAGE}.exe
 # List of docker images
 IMAGE_LIST := ${IMAGE}-images.out
 
 test:
-	@-echo Use \"make docker\" to build ${IMAGE}:${VERSION} from ${LINUX_EXE}
+	@-echo Use \"make standalone\" to build local binary cmd/${IMAGE}/${IMAGE}
+	@-echo Use \"make docker\" to build ${IMAGE}:${VERSION} from cmd/${IMAGE}/${LINUX_EXE}
 # "make push" will push it to DockerHub, using credentials in your env
 
 ##
@@ -29,7 +30,7 @@ endef
 ##
 .PHONY: standalone install
 ${IMAGE}: cmd/*/*.go pkg/*/*.go
-	cd cmd/perftest && go build -v && go test -v && go vet && ln -f perftest ../..
+	cd cmd/perftest && go build -v && go test -v && go vet
 
 standalone: ${IMAGE}
 install:	${IMAGE}
@@ -37,16 +38,17 @@ install:	${IMAGE}
 
 .PHONY: build docker full 
 build docker: ${IMAGE_LIST}
-${IMAGE_LIST}:	${LINUX_EXE} Dockerfile Makefile
+${IMAGE_LIST}:	cmd/${IMAGE}/${LINUX_EXE} Dockerfile Makefile
 	$(docker-build) -t ${IMAGE} .
 	$(DOCKER) tag ${IMAGE} "${IMAGE}:${VERSION}" # tag local image name with version
+	$(DOCKER) tag ${IMAGE} "${IMAGE}:latest" # tag local image name with version
 	$(DOCKER) images | egrep '^perftest ' > ${IMAGE_LIST}
 	@-test -s ${IMAGE_LIST} || rm -f ${IMAGE_LIST}
 
 full:	clean docker run
 
-${LINUX_EXE}: cmd/perftest/perftest.go pkg/*/*.go
-	cd cmd/perftest && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o $@ .
+cmd/${IMAGE}/${LINUX_EXE}: cmd/perftest/perftest.go pkg/*/*.go
+	cd cmd/${IMAGE} && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ${LINUX_EXE} .
 
 .PHONY: run push
 run:	${IMAGE_LIST}
@@ -58,7 +60,7 @@ push:	${IMAGE_LIST}
 
 .PHONY: clean
 clean:
-	-rm -rf ${IMAGE} ${LINUX_EXE} ${IMAGE_LIST}
+	-rm -rf ${IMAGE_LIST} ${IMAGE} ${LINUX_EXE} cmd/${IMAGE}/${IMAGE} cmd/${IMAGE}/${LINUX_EXE}
 	-$(DOCKER) rmi ${IMAGE}:${VERSION}
 
 CLI = rafay-cli
