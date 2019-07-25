@@ -43,7 +43,7 @@ Clone this repo.
 
 Once you've built the app you can run it in one of two ways, standalone or as a docker.
 
-**Standalone**: To run a test from the command line: `./perftest -n 5 https://www.google.com`.  You
+**Standalone**: To run a test from the command line: `cmd/perftest/perftest -n 5 https://www.google.com`.  You
 will see output like this:
 
     # timestamp	DNS	TCP	TLS	First	LastB	Total	HTTP	Size	From_Location	Remote_Addr	proto://uri
@@ -84,11 +84,11 @@ You can modify the arguments in the Makefile, or use a variant of its `docker ru
 directly from the shell.  You'll see similar output as above.
 
 A recent version of `perftest` is available in the DockerHub and Rafay registries as noted below.
-You can fetch it from public DockerHub to your local system via `docker pull dc4jadrafay/perftest`
+You can fetch it from public DockerHub to your local system via `docker pull rafaysystems/perftest`
 if you prefer not to build from source.  Or you can just run it using a command line like the one
 in the Makefile:
 
-    docker run --rm -it -e PERFTEST_URL="https://www.google.com" -e REP_LOCATION="Your Town,US" dc4jadrafay/perftest:v1 -n=5 -d=2
+    docker run --rm -it -e PERFTEST_URL="https://www.google.com" -e REP_LOCATION="Your Town,US" rafaysystems/perftest:latest -n=5 -d=2
 
 This example also shows how the application picks up values from the environment.  This will be
 useful as we build out the edge application.
@@ -118,7 +118,7 @@ installed, you can just run a pre-built version from there using a command
 line similar to this:
 
 ``` shell
-docker run dc4jadrafay/perftest:v1 -n 5 -d 1 https://www.google.com/
+docker run rafaysystems/perftest:latest -n 5 -d 1 https://www.google.com/
 ```
 
 # Run on Rafay
@@ -137,17 +137,21 @@ a CLI tool we provide.
 
 ## Creating a Rafay Workload
 
-To run a workload for the Rafay Platform you will need to sign up for an
+To run a workload on the Rafay Platform you will need to sign up for an
 account (they are free) and then configure the workload to run on one or
 more edges.
 
 ### Sign Up and Login
 
-Go to the [Rafay Admin Console](https://console.rafay.cloud/).  To create an
-account, and click [Sign Up](https://console.rafay-edge.net/#/signup).
-You'll get an email back from us when the account is approved.
+The [product documentation](https://console.rafay-edge.net/docs/) has more
+information about how to sign up and use the platform. Here we provide a quick
+start to get `pingmesh` up and running.
 
-Then login to the [Rafay Admin Console](https://console.rafay.cloud/) to get
+First, Go to the [Rafay Admin Console](https://console.rafay-edge.net/). To
+create an account, click [Sign Up](https://console.rafay-edge.net/#/signup).
+You'll get an email back from Rafay Operations when the account is approved.
+
+Next, login to the [Rafay Admin Console](https://console.rafay-edge.net/) to get
 started configuring your application.
 
 To publish a workload you'll need to download the Rafay CLI (command line
@@ -201,24 +205,26 @@ Build the container, if you haven't already, with `make docker`.
 Then upload it to the Rafay Admin Console as follows.
 
 ``` shell
-$ rafay-cli image upload perftest:v2
-Uploading Image 100 / 100  100.00% 6s
+$ make rafay-push
+docker tag perftest perftest:201907251331 # tag local image name with timestamp
+rafay-cli image upload perftest:201907251331
+Uploading Image 100 / 100 [==========================================================] 100.00% 5s
 
 Login Succeeded
 The push refers to repository [rcr.rafay-edge.net:6000/jade_systems/jadesystemslosaltos/perftest]
-2e9700dfd1fd: Preparing
-d24c14852a21: Preparing
-d24c14852a21: Pushed
-2e9700dfd1fd: Pushed
-v2: digest: sha256:bc29de325c63cc01cad5df93ce4a7c5284f6feb2c66b26fd20b45a0da5e2d4de size: 738
-Untagged: rcr.rafay-edge.net:6000/jade_systems/jadesystemslosaltos/perftest:v2
-Untagged: rcr.rafay-edge.net:6000/jade_systems/jadesystemslosaltos/perftest@sha256:bc29de325c63cc01cad5df93ce4a7c5284f6feb2c66b26fd20b45a0da5e2d4de
-
-
+e1e8e05fa263: Preparing
+57d960c31f45: Preparing
+23f7bd114e4a: Preparing
+23f7bd114e4a: Layer already exists
+57d960c31f45: Pushed
+e1e8e05fa263: Pushed
+201907251331: digest: sha256:a0f8645b6f26b4f95a9203a3dc8e13cfcebafd2d6651737efa778f46ed921ff9 size: 949
+Untagged: rcr.rafay-edge.net:6000/jade_systems/jadesystemslosaltos/perftest:201907251331
+Untagged: rcr.rafay-edge.net:6000/jade_systems/jadesystemslosaltos/perftest@sha256:a0f8645b6f26b4f95a9203a3dc8e13cfcebafd2d6651737efa778f46ed921ff9
 
 Successfully uploaded the image:
 
-	rcr.rafay-edge.net:6000/jade_systems/jadesystemslosaltos/perftest:v2
+	rcr.rafay-edge.net:6000/jade_systems/jadesystemslosaltos/perftest:201907251331
 
 Please use the above image name in your workloads.
 ```
@@ -334,14 +340,17 @@ minimal one), and doing so in multiple locations is even harder.   So I
 added a simple web server function to my application to return memory usage
 information using the golang `runtime.MemStats` feature.
 
-Docker version v5 includes this new flag.  Here's an example, using a
+Docker version v5 includes this new port flag.  Here's an example, using a
 not-so-random port, testing against google every 30 seconds:
 
 ``` shell
-docker run perftest:v5 -d 30 -s 52378 https://www.google.com/
+docker run -p 52378:52378 perftest:v5 -d 30 -p 52378 https://www.google.com/
 ```
 
-View memory stats by pointing your browser to `localhost:52378/memstats`.
+Now view memory stats by pointing your browser to `localhost:52378/memstats`. If
+it's not there make sure you used both -p options above with the same port. (The
+fist -p argument tells `docker run` to connect the container port to the outside
+world. The second one tells `perftest` what port to listen on. They must agree.)
 
 ## Viewing Workload Results
 
