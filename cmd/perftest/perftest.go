@@ -204,10 +204,10 @@ func main() {
 
 	if *cwFlag {
 		cwRegion := os.Getenv("AWS_REGION")
-		if len(cwRegion) > 0 {
+		if len(cwRegion) > 0 && len(os.Getenv("AWS_ACCESS_KEY_ID")) > 0 && len(os.Getenv("AWS_SECRET_ACCESS_KEY")) > 0 {
 			log.Println("publishing to CloudWatch region", cwRegion)
 		} else {
-			log.Println("CloudWatch requested but no AWS_REGION, unsetting cw")
+			log.Println("CloudWatch requires in environment: AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY")
 			*cwFlag = false
 		}
 	}
