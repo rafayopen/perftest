@@ -88,7 +88,7 @@ You can fetch it from public DockerHub to your local system via `docker pull raf
 if you prefer not to build from source.  Or you can just run it using a command line like the one
 in the Makefile:
 
-    docker run --rm -it -e PERFTEST_URL="https://www.google.com" -e REP_LOCATION="Your Town,US" rafaysystems/perftest:latest -n=5 -d=2
+    docker run --rm -it -e PERFTEST_URL="https://www.google.com" -e REP_LOCATION="Your Town,US" rafaysystems/perftest:v5 -n=5 -d=2
 
 This example also shows how the application picks up values from the environment.  This will be
 useful as we build out the edge application.
@@ -118,7 +118,7 @@ installed, you can just run a pre-built version from there using a command
 line similar to this:
 
 ``` shell
-docker run rafaysystems/perftest:latest -n 5 -d 1 https://www.google.com/
+docker run rafaysystems/perftest:v5 -n 5 -d 1 https://www.google.com/
 ```
 
 # Run on Rafay
@@ -372,3 +372,30 @@ from the environment: we put REP_LOCATION, and a few other items, into the
 shell environment of every container.  You can see them by running a
 go-httpbin testapp we also provide (at the /env/ endpoint).
 
+With the tool running you can spot long term trends and interesting anomalies.
+The following CloudWatch graph shows `perftest` running in 11 locations on the
+Rafay sandbox network. The graph shows the p95 metric (95th percentile of the
+response time metric) in 5 minute buckets across 12 hours.
+
+![12h p95 rafay.co CloudWatch](img/CloudWatch_p95_2019-07-26T190500Z.png)
+
+The observations and questions I draw from this include:
+  * What happened at 09:00? The response time degraded across *all locations*
+    at that time. A CloudWatch alert can help notify when such things occur. And
+    `perftest` can send alerts directly as well (see the usage message).
+  * Looking at the general trend we can see the difference in response time by
+    location. Australia is always over 1 second page response time, while
+    Atlanta is almost always below 100 msec.
+  
+Looking at the p10 (10th percentile) metric shows the best 10 second sample
+across each 5 minute period. See the image below. This adds some insights.
+  * The 09:00 spike did not last all five minutes. It was transient. 
+  * Reponse time is nearly flat in every geography. This informs us about the
+    network latency that drives baseline performance. At the p10 we clearly see
+    a period of time wehre Melbourne performance improves measurably.
+
+![12h p10 rafay.co CloudWatch](img/CloudWatch_p10_2019-07-26T190500Z.png)
+
+Combined with alerts and log collection from the container you can dig into the
+questions remaining in the basic metrics. I hope the tool helps if you are on
+the path of a performance analyst as I have been many times.
