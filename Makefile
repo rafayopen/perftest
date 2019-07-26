@@ -42,7 +42,7 @@ ${IMAGE_LIST}:	cmd/${IMAGE}/${LINUX_EXE} Dockerfile Makefile
 	$(docker-build) -t ${IMAGE} .
 	$(DOCKER) tag ${IMAGE} "${IMAGE}:${VERSION}" # tag local image name with version
 	$(DOCKER) tag ${IMAGE} "${IMAGE}:latest" # tag local image name with version
-	$(DOCKER) images | egrep '^perftest ' > ${IMAGE_LIST}
+	$(DOCKER) images | egrep 'perftest ' > ${IMAGE_LIST}
 	@-test -s ${IMAGE_LIST} || rm -f ${IMAGE_LIST}
 
 full:	clean docker run
