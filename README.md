@@ -39,7 +39,7 @@ golang you can still build and run a standalone version.
 Clone this repo.
   * Use "gmake standalone" to build the local standalone app.
   * Use "gmake docker" if you want to build the docker image.
-  
+
 
 Once you've built the app you can run it in one of two ways, standalone or as a docker.
 
@@ -52,11 +52,11 @@ will see output like this:
     3 1554917723	1.265	14.341	52.774	63.336	3.908	134.661	200	12052	192.168.2.35	172.217.0.36	https://www.google.com
     4 1554917733	2.007	17.288	56.195	65.746	1.727	141.187	200	12000	192.168.2.35	172.217.0.36	https://www.google.com
     5 1554917744	19.876	12.394	56.910	73.899	2.003	145.440	200	12040	192.168.2.35	172.217.164.100	https://www.google.com
-    
+
     Recorded 5 samples in 41s, average values:
     # timestamp	DNS	TCP	TLS	First	LastB	Total	HTTP	Size	From_Location	Remote_Addr	proto://uri
     5 41s   	9.738	14.567	68.615	64.764	2.193	151.155		12032		https://www.google.com
-    
+
 Each line has a request count (1..5), the epoch timestamp when the test started, and the time in
 milliseconds measured for the following actions:
   * DNS: how long to look up the IP address(es) for the hostname
@@ -180,15 +180,15 @@ prompts.
 rafay-cli init
 ```
 
-Enter API key: 
+Enter API key:
     your API Key from the API key create dialog
-Enter API secret: 
+Enter API secret:
     your API Secret from the API key create dialog
-Enter Rafay username: 
+Enter Rafay username:
     your username from the Users page
-Enter Rafay registry secret: 
+Enter Rafay registry secret:
     your secret from the registry key create dialog
-Enter Rafay organization label: 
+Enter Rafay organization label:
     your organization label from the registry key create dialog
 
 You should see a message like
@@ -316,7 +316,7 @@ guide](https://rafay.zendesk.com/hc/en-us/articles/360007054432-Quick-Start-Guid
 for this and other scenarios.  You'll need Rafay credentials to pull up
 zendesk content at this time.
 
- 
+
 ## Debugging Workload Issues
 
 If the workload fails to place, try running it locally, for example
@@ -364,13 +364,16 @@ If you configured the AWS environment you can also view it in your AWS
 CloudWatch instance.
   * Login to [your AWS console](console.aws.amazon.com) (the one that
     corresponds to AWS credentials you entered into the Rafay console).
-  * Navigate to CloudWatch Metrics, select all metrics, and watch the data
-    roll in.
-    
+  * Navigate to CloudWatch Metrics, look for the `Http Perf Demo` namespace,
+    select all metrics, and watch the data roll in.
+  * You may want to filter by response code 200 (HTTP OK). I also like to set
+    the Y axis Min value to zero (in tab "Graph options"), and prefer the median
+    (p50) or p10 Statistic (in "Graphed metrics" tab).
+
 You'll note that the Rafay workload picks up a location label automatically
 from the environment: we put REP_LOCATION, and a few other items, into the
 shell environment of every container.  You can see them by running a
-go-httpbin testapp we also provide (at the /env/ endpoint).
+go-httpbin testapp we also provide (at the /env/ endpoint of httpbin).
 
 With the tool running you can spot long term trends and interesting anomalies.
 The following CloudWatch graph shows `perftest` running in 11 locations on the
@@ -386,10 +389,10 @@ The observations and questions I draw from this include:
   * Looking at the general trend we can see the difference in response time by
     location. Australia is always over 1 second page response time, while
     Atlanta is almost always below 100 msec.
-  
+
 Looking at the p10 (10th percentile) metric shows the best 10 second sample
 across each 5 minute period. See the image below. This adds some insights.
-  * The 09:00 spike did not last all five minutes. It was transient. 
+  * The 09:00 spike did not last all five minutes. It was transient.
   * Reponse time is nearly flat in every geography. This informs us about the
     network latency that drives baseline performance. At the p10 we clearly see
     a period of time wehre Melbourne performance improves measurably.
