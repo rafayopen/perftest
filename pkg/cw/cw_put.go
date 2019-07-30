@@ -11,14 +11,16 @@ import (
 	"time"
 )
 
-// Publish resonse time in milliseconds as metric "RespTime" in CloudWatch namespace "Perf Demo".
-// Could be made more generic of course.  This is for Rafay Feb Demo A.
+// Publish a metric (resonse time in milliseconds) to a CloudWatch namespace.
 //
 // AWS Cloudwatch requires the following variables in the environment (see AWS SDK docs):
 // AWS_REGION
 // AWS_ACCESS_KEY_ID
 // AWS_SECRET_ACCESS_KEY
-func PublishRespTime(location, url, respCode string, respTime float64) {
+//
+// Use as dimensions: location, url, respCode
+// Publishes "metric" as "name" in "namespace"
+func PublishRespTime(location, url, respCode string, metricValue float64, metricName, namespace string) {
 	// Load credentials from the shared credentials file ~/.aws/credentials
 	// and configuration from the shared configuration file ~/.aws/config.
 	sess := session.Must(session.NewSession())
@@ -27,10 +29,6 @@ func PublishRespTime(location, url, respCode string, respTime float64) {
 	// Create new cloudwatch client.
 	svc := cloudwatch.New(sess)
 
-	// static metric and namespace for now
-	metric := "RespTime"
-	namespace := "Http Perf Demo"
-
 	timestamp := time.Now()
 	_, err := svc.PutMetricData(&cloudwatch.PutMetricDataInput{
 		Namespace: aws.String(namespace),
@@ -38,8 +36,8 @@ func PublishRespTime(location, url, respCode string, respTime float64) {
 		MetricData: []*cloudwatch.MetricDatum{
 			&cloudwatch.MetricDatum{
 				Timestamp:  &timestamp,
-				MetricName: aws.String(metric),
-				Value:      aws.Float64(respTime),
+				MetricName: aws.String(metricName),
+				Value:      aws.Float64(metricValue),
 				Unit:       aws.String(cloudwatch.StandardUnitMilliseconds),
 				Dimensions: []*cloudwatch.Dimension{
 					&cloudwatch.Dimension{

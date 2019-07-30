@@ -326,6 +326,8 @@ func testHTTP(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 	var count int64            // successful
 	failcount := 0             // failed
 	var ptSummary pt.PingTimes // aggregates ping time results
+	mn := "RespTime"           // CloudWatch metric name
+	ns := "Http Perf Demo"     // CloudWatch namespace
 
 	for {
 		ptResult := pt.FetchURL(urlStr, myLocation)
@@ -398,7 +400,7 @@ func testHTTP(uri string, numTries int, done <-chan int, wg *sync.WaitGroup) {
 					respCode = fmt.Sprintf("%03d", ptResult.RespCode)
 				}
 
-				cw.PublishRespTime(myLocation, urlStr, respCode, pt.Msec(ptResult.RespTime()))
+				cw.PublishRespTime(myLocation, urlStr, respCode, pt.Msec(ptResult.RespTime()), mn, ns)
 			}
 
 			if whClient != nil {
