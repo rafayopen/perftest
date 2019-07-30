@@ -15,7 +15,7 @@ IMAGE_LIST := ${IMAGE}-images.out
 
 test:
 	@-echo Use \"make standalone\" to build local binary cmd/${IMAGE}/${IMAGE}
-	@-echo Use \"make docker\" to build ${IMAGE}:${VERSION} from cmd/${IMAGE}/${LINUX_EXE}
+	@-echo Use \"make docker\" to build ${IMAGE}:${VERSION} from ${LINUX_EXE}
 # "make push" will push it to DockerHub, using credentials in your env
 
 ##
@@ -30,7 +30,7 @@ endef
 ##
 .PHONY: standalone install
 ${IMAGE}: cmd/*/*.go pkg/*/*.go
-	cd cmd/perftest && go build -v && go test -v && go vet
+	cd cmd/${IMAGE} && go build -v && go test -v && go vet
 
 standalone: ${IMAGE}
 install:	${IMAGE}
@@ -42,12 +42,12 @@ ${IMAGE_LIST}:	cmd/${IMAGE}/${LINUX_EXE} Dockerfile Makefile
 	$(docker-build) -t ${IMAGE} .
 	$(DOCKER) tag ${IMAGE} "${IMAGE}:${VERSION}" # tag local image name with version
 	$(DOCKER) tag ${IMAGE} "${IMAGE}:latest" # tag local image name with version
-	$(DOCKER) images | egrep 'perftest ' > ${IMAGE_LIST}
+	$(DOCKER) images | egrep "${IMAGE} " > ${IMAGE_LIST}
 	@-test -s ${IMAGE_LIST} || rm -f ${IMAGE_LIST}
 
 full:	clean docker run
 
-cmd/${IMAGE}/${LINUX_EXE}: cmd/perftest/perftest.go pkg/*/*.go
+cmd/${IMAGE}/${LINUX_EXE}: cmd/*/*.go pkg/*/*.go
 	cd cmd/${IMAGE} && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ${LINUX_EXE} .
 
 .PHONY: run push
