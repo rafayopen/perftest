@@ -138,13 +138,15 @@ func FetchURL(rawurl string, myLocation string) *PingTimes {
 	status := 520
 	var bytes int64
 	resp, err := client.Do(req)
+	if resp != nil {
+		// Close body if non-nil, whatever err says (even if err non-nil)
+		resp.Body.Close()
+	}
 	if err != nil {
 		log.Printf("reading response: %v", err)
-		// return nil
 	} else {
 		// drain the response body, read all the bytes to set close time correctly
 		bytes = readResponseBody(req, resp)
-		resp.Body.Close()
 		status = resp.StatusCode
 	}
 	tClose = time.Now() // after read body
