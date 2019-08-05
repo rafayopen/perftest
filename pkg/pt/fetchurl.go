@@ -122,6 +122,9 @@ func FetchURL(rawurl string, myLocation string) *PingTimes {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true, // Warning: skips CA checks, but ping doesn't care
+		},
 	}
 
 	client := &http.Client{
@@ -140,7 +143,7 @@ func FetchURL(rawurl string, myLocation string) *PingTimes {
 	resp, err := client.Do(req)
 	if resp != nil {
 		// Close body if non-nil, whatever err says (even if err non-nil)
-		resp.Body.Close()
+		defer resp.Body.Close() // after we read the resonse body
 	}
 	if err != nil {
 		log.Printf("reading response: %v", err)
