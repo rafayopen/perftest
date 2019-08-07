@@ -40,8 +40,42 @@ Clone this repo.
   * Use "gmake standalone" to build the local standalone app.
   * Use "gmake docker" if you want to build the docker image.
 
+Once you've built the app you can run it in one of two ways, standalone or as a docker. The
+application takes the following command line usage:
 
-Once you've built the app you can run it in one of two ways, standalone or as a docker.
+    Usage: perftest [flags] URL ...
+    URLs to test -- there may be multiple of them, all will be tested in parallel.
+    Continue to issue requests every $delay seconds; if delay==0, make requests until interrupted.
+    Can stop after some number of cycles (-n), or when enough failures occur, or signaled to stop.
+    
+    Can send an alert if desired if total response time is over a threshold.
+    Supported alerting mechanisms:
+      - Twilio (requires account ID and API key in shell environment)
+    
+    The app behavior is controlled via command line flags and environment variables.
+    See README.md for a description.
+    
+    Command line flags:
+      -A int
+        	alert threshold in milliseconds
+      -M int
+        	minimum time interval between generated alerts (seconds) (default 300)
+      -V	be more verbose
+      -W string
+        	Webhook target URL to receive JSON log details via POST
+      -c	Publish metrics to CloudWatch (requires AWS credentials in env)
+      -d int
+        	delay in seconds between test requests (default 10)
+      -f int
+        	maximum number of failures before process quits (default 10)
+      -j	write detailed metrics in JSON (default is text TSV format)
+      -n int
+        	number of tests to each endpoint (default 0 runs until interrupted)
+      -p int
+        	run web server on this port (if non-zero) to report stats
+      -q	be quiet, not verbose
+      -v	be verbose
+
 
 **Standalone**: To run a test from the command line: `cmd/perftest/perftest -n 5 https://www.google.com`.  You
 will see output like this:
@@ -82,6 +116,9 @@ If you test to multiple endpoints you'll see multiple sections as each completes
 build the docker image (if needed) and run it out of the local docker repo with default arguments.
 You can modify the arguments in the Makefile, or use a variant of its `docker run` invocation
 directly from the shell.  You'll see similar output as above.
+
+In addition to command line arguments, the docker version can also read the following environment
+variables to control application behavior. They are documented below under Configure the Workload.
 
 A recent version of `perftest` is available in the DockerHub and Rafay registries as noted below.
 You can fetch it from public DockerHub to your local system via `docker pull rafaysystems/perftest`
@@ -268,6 +305,8 @@ with values like this, clicking Add Startup Configuration as needed:
 | AWS_REGION | your AWS preferred region | CloudWatch region |
 | AWS_ACCESS_KEY_ID | your AWS access key id | CloudWatch credentials |
 | AWS_SECRET_ACCESS_KEY | your AWS secret access key | CloudWatch credentials |
+| HTTP_JSON_WEBHOOK | A webhook URL to which `perftest` will post JSON PingTimes samples |
+| PERFTEST_LISTEN_PORT | If set (or -p is used) `perftest` will set up a webserver to respond to /memstats requests |
 
 If you leave these marked Secure they will not appear in the UI and will be
 transmitted securely to the Rafay platform.
