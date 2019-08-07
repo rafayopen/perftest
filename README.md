@@ -305,8 +305,8 @@ with values like this, clicking Add Startup Configuration as needed:
 | AWS_REGION | your AWS preferred region | CloudWatch region |
 | AWS_ACCESS_KEY_ID | your AWS access key id | CloudWatch credentials |
 | AWS_SECRET_ACCESS_KEY | your AWS secret access key | CloudWatch credentials |
-| HTTP_JSON_WEBHOOK | A webhook URL to which `perftest` will post JSON PingTimes samples |
-| PERFTEST_LISTEN_PORT | If set (or -p is used) `perftest` will set up a webserver to respond to /memstats requests |
+| HTTP_JSON_WEBHOOK | JSON webhook URL | `perftest` will post JSON PingTimes here |
+| PERFTEST_LISTEN_PORT | TCP server port | `perftest` will respond to /memstats requests |
 
 If you leave these marked Secure they will not appear in the UI and will be
 transmitted securely to the Rafay platform.
