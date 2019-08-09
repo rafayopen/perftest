@@ -66,7 +66,7 @@ var (
 	whURL    string       // URL of webhook server
 	whClient *http.Client // HTTP client object used for HTTP POST to webhook
 
-	verbose = 0
+	verbose = 1
 
 	alertThresh time.Duration      // alert threshold value (from environment)
 	twilioSms   pf.StringArrayFlag // array of Twilio SMS numbers to alert
@@ -228,6 +228,40 @@ func main() {
 			return
 		}
 		serverPort = val
+	}
+
+	wasFlagPassed := func(fn string) bool {
+		found := false
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == fn {
+				found = true
+			}
+		})
+		return found
+	}
+
+	if delayEnv, found := os.LookupEnv("PERFTEST_DELAY"); found {
+		delay, err := strconv.Atoi(delayEnv)
+		if err != nil || delay < 1 {
+			log.Println("Warning: PERFTEST_DELAY environment is", delayEnv, "-- value must be int > 0.  Using -d", *delayFlag, "instead")
+		} else {
+			if wasFlagPassed("d") {
+				log.Println("Note: PERFTEST_DELAY from environment,", delay, "overrides -d", *delayFlag)
+			}
+			*delayFlag = delay
+		}
+	}
+
+	if numEnv, found := os.LookupEnv("PERFTEST_LIMIT"); found {
+		num, err := strconv.Atoi(numEnv)
+		if err != nil || num < 1 {
+			log.Println("Warning: PERFTEST_LIMIT from environment is", numEnv, "-- value must be int > 0.  Using -n", *numTests, "instead")
+		} else {
+			if wasFlagPassed("n") {
+				log.Println("Note: PERFTEST_LIMIT from environment,", num, "overrides -n", *numTests)
+			}
+			*numTests = num
+		}
 	}
 
 	if *portFlag > 0 {

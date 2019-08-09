@@ -53,7 +53,7 @@ application takes the following command line usage:
       - Twilio (requires account ID and API key in shell environment)
     
     The app behavior is controlled via command line flags and environment variables.
-    See README.md for a description.
+    See README.md (Configure Workload section below) for a description.
     
     Command line flags:
       -A int
@@ -302,6 +302,8 @@ with values like this, clicking Add Startup Configuration as needed:
 | Name | Value | Comments |
 |------|-------|----------|
 | PERFTEST_URL | https://www.google.com | URL for the app to test |
+| PERFTEST_LIMIT | Number of tests | Overrides the -n option (env var has precedence) |
+| PERFTEST_DELAY | Time between requests | Overrides the -d option (env has precedence) |
 | AWS_REGION | your AWS preferred region | CloudWatch region |
 | AWS_ACCESS_KEY_ID | your AWS access key id | CloudWatch credentials |
 | AWS_SECRET_ACCESS_KEY | your AWS secret access key | CloudWatch credentials |
