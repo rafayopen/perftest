@@ -302,6 +302,7 @@ with values like this, clicking Add Startup Configuration as needed:
 | Name | Value | Comments |
 |------|-------|----------|
 | PERFTEST_URL | https://www.google.com | URL for the app to test |
+| REP_LOCATION | City,CC of the server | Sent to CloudWatch and to stdout (CC is ISO country code) |
 | PERFTEST_LIMIT | Number of tests | Overrides the -n option (env var has precedence) |
 | PERFTEST_DELAY | Time between requests | Overrides the -d option (env has precedence) |
 | AWS_REGION | your AWS preferred region | CloudWatch region |
