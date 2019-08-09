@@ -6,7 +6,7 @@ CWD := $(shell basename ${PWD})
 # Docker image name, based on current working directory
 IMAGE := ${CWD}
 # Version (tag used with docker push)
-VERSION := v5
+VERSION := `git tag | tail -1`
 
 # Linux build image name (does not conflict with go build)
 LINUX_EXE := ${IMAGE}.exe
